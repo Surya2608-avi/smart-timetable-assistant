@@ -35,7 +35,13 @@ pip install -r requirements.txt
 ```
 streamlit run app.py
 ```
+## 🚀 Week 3-4 Updates
 
+- Added Assignment Tracker
+- Implemented Urgency Detection
+- Added Smart Study Suggestions
+- Integrated AI Scheduling
+- Added Reminder System
 ---
 
 ##  Note
