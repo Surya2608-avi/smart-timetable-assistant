@@ -16,6 +16,8 @@ c = conn.cursor()
 
 c.execute('''CREATE TABLE IF NOT EXISTS tasks
              (name TEXT, deadline TEXT, priority TEXT)''')
+c.execute('''CREATE TABLE IF NOT EXISTS subjects
+             (subject TEXT, hours TEXT)''')
 
 # ---------------- SHOW EVENTS ----------------
 
@@ -245,3 +247,73 @@ if st.button("Run AI Scheduler", key="ai_btn"):
 
         service.events().insert(calendarId='primary', body=event).execute()
         st.success("✅ Event scheduled!")
+st.markdown("---")
+st.subheader("📖 Smart Study Session Planner")
+
+if st.button("Generate Study Plan", key="study_plan_btn"):
+    c.execute("SELECT * FROM tasks")
+    tasks = c.fetchall()
+
+    today = date.today()
+
+    if not tasks:
+        st.write("No tasks available.")
+    else:
+        for t in tasks:
+            task_name = t[0]
+            deadline = datetime.strptime(t[1], "%Y-%m-%d").date()
+
+            days_left = (deadline - today).days
+
+            if days_left <= 2:
+                st.error(f"⚠️ {task_name}: Study Today (2 Hours Recommended)")
+            elif days_left <= 5:
+                st.warning(f"⏳ {task_name}: Study This Week (1 Hour Daily)")
+            else:
+                st.success(f"✅ {task_name}: Planned Normally")
+st.markdown("---")
+st.subheader("📘 Subject-wise Time Allocation")
+
+subject_name = st.text_input("Subject Name", key="subject_name")
+study_hours = st.text_input("Study Hours Per Day", key="study_hours")
+
+if st.button("Add Subject Plan", key="add_subject_btn"):
+    if not subject_name:
+        st.error("Enter subject name")
+    else:
+        c.execute("INSERT INTO subjects VALUES (?, ?)",
+                  (subject_name, study_hours))
+        conn.commit()
+        st.success("Subject plan added!")
+if st.button("Show Subject Plans", key="show_subject_btn"):
+    c.execute("SELECT * FROM subjects")
+    subjects = c.fetchall()
+
+    if not subjects:
+        st.write("No subject plans found.")
+    else:
+        for s in subjects:
+            st.write(f"📚 {s[0]} → {s[1]} hrs/day")
+st.markdown("---")
+st.subheader("☕ Break & Rest Optimization")
+
+if st.button("Show Break Suggestions", key="break_btn"):
+    c.execute("SELECT * FROM subjects")
+    subjects = c.fetchall()
+
+    if not subjects:
+        st.write("No subject plans available.")
+    else:
+        for s in subjects:
+            subject = s[0]
+
+            try:
+                hours = float(s[1])
+
+                if hours >= 1.5:
+                    st.info(f"📘 {subject}: Study for 90 mins → Take 15 mins break")
+                else:
+                    st.success(f"📘 {subject}: Short session → No major break needed")
+
+            except:
+                st.warning(f"⚠️ Invalid hours entered for {subject}")
