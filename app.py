@@ -3,7 +3,7 @@ from datetime import datetime, date
 import sqlite3
 from calendar_service import get_calendar_service
 from datetime import datetime, timedelta
-
+import streamlit as st
 st.set_page_config(page_title="Smart Timetable Assistant", layout="centered")
 
 st.title("Smart Timetable Assistant")
@@ -70,45 +70,47 @@ def check_conflict(service, start, end):
     return len(events) > 0
 
 # ---------------- ADD EVENT ----------------
-
 st.markdown("---")
-st.subheader("Add New Event")
+st.subheader("➕ Add New Event")
 
-title = st.text_input("Event Title")
-date = st.date_input("Date")
-start_time = st.time_input("Start Time")
-end_time = st.time_input("End Time")
+title = st.text_input("Event Title", key="event_title")
+event_date = st.date_input("Date", key="event_date")
+start_time = st.time_input("Start Time", key="start_time")
+end_time = st.time_input("End Time", key="end_time")
 
-if st.button("Show Tasks", key="show_tasks_btn"):
-    c.execute("SELECT * FROM tasks")
-    tasks = c.fetchall()
+# ✅ CREATE EVENT BUTTON (IMPORTANT)
+if st.button("Create Event", key="create_event_btn"):
 
-    if not tasks:
-        st.write("No tasks found.")
+    if not title:
+        st.error("Please enter event title.")
+        st.stop()
+
+    if start_time >= end_time:
+        st.error("End time must be after start time.")
+        st.stop()
+
+    start_datetime = datetime.combine(event_date, start_time).isoformat() + "+05:30"
+    end_datetime = datetime.combine(event_date, end_time).isoformat() + "+05:30"
+
+    conflict = check_conflict(service, start_datetime, end_datetime)
+
+    if conflict:
+        st.error("❌ Time conflict detected!")
     else:
-        today = date.today()
+        event = {
+            'summary': title,
+            'start': {
+                'dateTime': start_datetime,
+                'timeZone': 'Asia/Kolkata',
+            },
+            'end': {
+                'dateTime': end_datetime,
+                'timeZone': 'Asia/Kolkata',
+            },
+        }
 
-        for t in tasks:
-            task_name = t[0]
-            deadline_str = t[1]
-            priority = t[2]
-
-            deadline_date = datetime.strptime(deadline_str, "%Y-%m-%d").date()
-            days_left = (deadline_date - today).days
-
-            if days_left <= 2:
-                st.error(f"⚠️ {task_name} | Due: {deadline_str} | URGENT!")
-
-                # 👇 NEW: Study Suggestion
-                st.info(f"📖 Suggestion: Study '{task_name}' today!")
-
-            elif days_left <= 5:
-                st.warning(f"⏳ {task_name} | Due: {deadline_str} | Moderate")
-
-                st.info(f"📖 Suggestion: Plan study for '{task_name}' soon.")
-
-            else:
-                st.success(f"✅ {task_name} | Due: {deadline_str} | Safe")
+        service.events().insert(calendarId='primary', body=event).execute()
+        st.success("✅ Event created successfully!")
 # ---------------- FREE SLOT FINDER ----------------
 
 st.markdown("---")
